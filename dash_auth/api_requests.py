@@ -34,22 +34,28 @@ def credential(key):
         return plotly.tools.get_credentials_file()[key.replace('plotly_', '')]
 
 
-def config(key):
-    if key in os.environ:
-        value = os.environ[key]
-    elif key.upper() in os.environ:
-        value = os.environ[key.upper()]
-    else:
-        value = plotly.tools.get_config_file()[key]
+def config(key, default=None):
+    try:
+        if key in os.environ:
+            value = os.environ[key]
+        elif key.upper() in os.environ:
+            value = os.environ[key.upper()]
+        else:
+            value = plotly.tools.get_config_file()[key]
 
-    # Handle PLOTLY_SSL_VERIFICATION which is True or False but a
-    # string in environ
-    if value == 'False':
-        return False
-    elif value == 'True':
-        return True
-    else:
-        return value
+        # Handle PLOTLY_SSL_VERIFICATION which is True or False but a
+        # string in environ
+        if value == 'False':
+            return False
+        elif value == 'True':
+            return True
+        else:
+            return value
+    except KeyError as e:
+        if default is None:
+            raise e
+        else:
+            return default
 
 
 HEADERS = {
@@ -110,10 +116,7 @@ def debug_requests_off():
 def _create_method(method_name):
     def request(path, api_key_auth=True, **request_kwargs):
         copied_kwargs = _modify_request_kwargs(request_kwargs)
-        if 'DASH_STREAMBED_DIRECT_IP' in os.environ:
-            base_url = 'https://{}'.format(config('dash_streambed_direct_ip'))
-        else:
-            base_url = config('plotly_api_domain')
+        base_url = config('AGRISTA_AUTH_DOMAIN', 'https://staging-id.agrista.com')
 
         request_method = getattr(requests, method_name)
 

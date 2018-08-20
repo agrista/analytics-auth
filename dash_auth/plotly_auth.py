@@ -45,13 +45,13 @@ class PlotlyAuth(OAuthBase):
             authorization_hook=authorization_hook
         )
 
-        self._dash_app = create_or_overwrite_dash_app(
-            app_name, sharing, app_url
-        )
-        oauth_app = create_or_overwrite_oauth_app(
-            app_url, app_name
-        )
-        self._oauth_client_id = oauth_app['client_id']
+        #self._dash_app = create_or_overwrite_dash_app(
+        #    app_name, sharing, app_url
+        #)
+        #oauth_app = create_or_overwrite_oauth_app(
+        #    app_url, app_name
+        #)
+        #self._oauth_client_id = oauth_app['client_id']
         self._sharing = sharing
 
     def html(self, script):
@@ -83,7 +83,7 @@ class PlotlyAuth(OAuthBase):
     def login_api(self):
         oauth_token = flask.request.get_json()['access_token']
         res = api_requests.get(
-            '/v2/users/current',
+            '/oauth2/userinfo',
             headers={'Authorization': 'Bearer {}'.format(oauth_token)},
         )
         try:
@@ -121,16 +121,8 @@ class PlotlyAuth(OAuthBase):
         return response
 
     def is_authorized(self):
-        if self._sharing == 'secret':
-            share_key = flask.request.args.get('share_key')
-            app_share_key = self._dash_app['share_key']
-
-            if share_key and compare_digest(str(share_key),
-                                            str(app_share_key)):
-                return True
-
-            if self.access_token_is_valid():
-                return True
+        if self.access_token_is_valid():
+            return True
 
         return super(PlotlyAuth, self).is_authorized()
 

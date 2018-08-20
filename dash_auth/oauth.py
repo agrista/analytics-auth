@@ -5,8 +5,10 @@ import os
 from textwrap import dedent
 import itsdangerous
 import functools
+import urllib
 
 from .auth import Auth
+from . import api_requests
 
 
 def need_request_context(func):
@@ -177,16 +179,14 @@ class OAuthBase(Auth):
     def auth_wrapper(self, f):
         def wrap(*args, **kwargs):
             if not self.is_authorized():
-                return flask.Response(status=403)
+                return self.auth_redirect()
 
             try:
                 response = f(*args, **kwargs)
             except Exception as err:
                 # Clear the cookie if auth fail
                 if getattr(err, 'status_code', None) in [401, 403]:
-                    response = flask.Response(status=403)
-                    self.clear_cookies(response)
-                    return response
+                    return self.auth_redirect()
                 else:
                     raise
 
@@ -194,6 +194,19 @@ class OAuthBase(Auth):
             # TODO - should set path or domain
             return self.add_access_token_to_response(response)
         return wrap
+
+    def auth_redirect(self):
+        auth_base_url = api_requests.config('AGRISTA_AUTH_DOMAIN', 'https://staging-id.agrista.com')
+        auth_endpoint = api_requests.config('AGRISTA_AUTH_ENDPOINT', '/oauth2/authorize')
+        client_id = api_requests.config('AGRISTA_AUTH_CLIENT_ID', '5f59246f-8755-4cb7-8637-147c473acf15')
+        params = {
+            'client_id': client_id,
+            'response_type': 'token',
+            'scope': 'profile',
+            'redirect_uri': flask.request.url
+        }
+
+        return flask.redirect(auth_base_url + auth_endpoint + '?' + urllib.parse.urlencode(params))
 
     def index_auth_wrapper(self, original_index):
         def wrap(*args, **kwargs):
