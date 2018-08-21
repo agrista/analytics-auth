@@ -8,10 +8,7 @@ class Auth(object):
     def __init__(self, app, authorization_hook=None):
         self.app = app
         self._index_view_name = app.config['routes_pathname_prefix']
-        self._protect_index()
-        #self._overwrite_index()
-        #self._protect_views()
-        #self._index_view_name = app.config['routes_pathname_prefix']
+        self._protect_views()
         self._auth_hooks = [authorization_hook] if authorization_hook else []
 
     def _overwrite_index(self):
@@ -26,9 +23,8 @@ class Auth(object):
 
     def _protect_views(self):
         # TODO - allow users to white list in case they add their own views
-        for view_name, view_method in iteritems(
-                self.app.server.view_functions):
-            if view_name != self._index_view_name:
+        for view_name, view_method in iteritems(self.app.server.view_functions):
+            if view_method == self.app.index:
                 self.app.server.view_functions[view_name] = \
                     self.auth_wrapper(view_method)
 

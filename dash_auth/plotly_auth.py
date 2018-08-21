@@ -10,12 +10,12 @@ import dash_html_components as html
 import dash_core_components as dcc
 from dash.dependencies import Output, Input
 
-from .oauth import OAuthBase
+from .oauth import OAuth
 
 from . import api_requests
 
 
-class PlotlyAuth(OAuthBase):
+class PlotlyAuth(OAuth):
     AUTH_COOKIE_NAME = 'plotly_auth'
     TOKEN_COOKIE_NAME = 'plotly_oauth_token'
 

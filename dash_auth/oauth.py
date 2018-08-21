@@ -22,7 +22,7 @@ def need_request_context(func):
     return _wrap
 
 
-class OAuthBase(Auth):
+class OAuth(Auth):
     # Name of the cookie containing the cached permission token
     AUTH_COOKIE_NAME = 'dash_token'
     # Name of the cookie containing the OAuth2 access token
@@ -101,6 +101,20 @@ class OAuthBase(Auth):
 
         with open(os.path.join(_current_path, 'login.js'), 'r') as f:
             self.login_bundle = f.read()
+
+        @self.app.server.before_request
+        def handle_access_token():
+            urlsplit = urllib.parse.urlsplit(flask.request.url)
+            params = urllib.parse.parse_qs(urlsplit.query)
+
+            if 'access_token' in params:
+                urlsplit_list = list(urlsplit)
+                urlsplit_list[3] = ''
+                urlsplit = tuple(urlsplit_list)
+
+                return self.login_api(urlsplit, params)
+
+            return None
 
     def access_token_is_valid(self):
         if self.AUTH_COOKIE_NAME not in flask.request.cookies:
@@ -247,8 +261,7 @@ class OAuthBase(Auth):
     def serve_oauth_redirect(self):
         return self.html(self.oauth_redirect_bundle)
 
-    def set_cookie(self, response, name, value, max_age,
-                   httponly=True, samesite='Strict'):
+    def set_cookie(self, response, name, value, max_age, httponly=True, samesite='Strict'):
         response.set_cookie(
             name,
             value=value,
@@ -282,23 +295,28 @@ class OAuthBase(Auth):
 
     def check_view_access(self, oauth_token):
         """Checks the validity of oauth_token."""
-        raise NotImplementedError()
+        return True
 
-    def login_api(self):
+    def login_api(self, split_url, params):
         """Obtains the access_token from the URL, sets the cookie."""
-        oauth_token = flask.request.get_json()['access_token']
+        oauth_token = params.get('access_token')[0]
+        res = api_requests.get('/oauth2/userinfo?' + urllib.parse.urlencode({'access_token': oauth_token}))
+        try:
+            res.raise_for_status()
+        except Exception as e:
+            print(res.content)
+            raise e
 
-        response = flask.Response(
-            '{}',
-            mimetype='application/json',
-            status=200
-        )
+        data = res.json()
+        response = flask.redirect(urllib.parse.urlunsplit(split_url))
 
+        self.set_user_name(data.get('sub'))
         self.set_cookie(
             response=response,
             name=self.TOKEN_COOKIE_NAME,
             value=oauth_token,
-            max_age=None
+            max_age=None,
+            samesite='Lax'
         )
 
         return response
