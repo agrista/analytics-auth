@@ -114,9 +114,9 @@ def debug_requests_off():
 
 
 def _create_method(method_name):
-    def request(path, api_key_auth=True, **request_kwargs):
+    def request(path, base_url, api_key_auth=True, **request_kwargs):
         copied_kwargs = _modify_request_kwargs(request_kwargs)
-        base_url = config('AGRISTA_AUTH_DOMAIN', 'https://staging-id.agrista.com')
+        base_url = base_url or config('AGRISTA_AUTH_DOMAIN', 'https://staging-id.agrista.com')
 
         request_method = getattr(requests, method_name)
 

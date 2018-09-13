@@ -6,6 +6,7 @@ from textwrap import dedent
 import itsdangerous
 import functools
 import urllib
+import requests
 
 from .auth import Auth
 from . import api_requests
@@ -184,7 +185,7 @@ class OAuth(Auth):
             userdata = self.get_user_data()
 
             if username:
-                self.set_user_name(username)
+                self.set_username(username)
             if userdata:
                 self.set_user_data(userdata)
 
@@ -300,17 +301,21 @@ class OAuth(Auth):
     def login_api(self, split_url, params):
         """Obtains the access_token from the URL, sets the cookie."""
         oauth_token = params.get('access_token')[0]
-        res = api_requests.get('/oauth2/userinfo?' + urllib.parse.urlencode({'access_token': oauth_token}))
+        userinfo_base_url = api_requests.config('AGRISTA_USERINFO_DOMAIN', 'https://staging-enterprise.agrista.com')
+        headers = {
+            'authorization': 'Bearer ' + oauth_token
+        }
         try:
-            res.raise_for_status()
+            res = requests.get(userinfo_base_url + '/api/me', headers=headers)
         except Exception as e:
-            print(res.content)
+            print(e)
             raise e
 
         data = res.json()
         response = flask.redirect(urllib.parse.urlunsplit(split_url))
 
-        self.set_user_name(data.get('sub'))
+        self.set_username(data.get('email'))
+        self.set_user_data(data)
         self.set_cookie(
             response=response,
             name=self.TOKEN_COOKIE_NAME,
@@ -355,7 +360,7 @@ class OAuth(Auth):
             return signed
 
     @need_request_context
-    def set_user_name(self, name):
+    def set_username(self, name):
         """
         Store the username in the `dash_user` cookie.
 
