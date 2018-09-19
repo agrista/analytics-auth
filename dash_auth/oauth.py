@@ -262,7 +262,7 @@ class OAuth(Auth):
     def serve_oauth_redirect(self):
         return self.html(self.oauth_redirect_bundle)
 
-    def set_cookie(self, response, name, value, max_age, httponly=True, samesite='Strict'):
+    def set_cookie(self, response, name, value, max_age, httponly=True, samesite='Lax'):
         response.set_cookie(
             name,
             value=value,
@@ -312,6 +312,9 @@ class OAuth(Auth):
             raise e
 
         data = res.json()
+        keys_to_remove = ('accessLevel', 'activeDirectory', 'isBudgetPublisher', 'teams', 'userRoles')
+
+        list(map(lambda x: functools.partial(data.pop, x, None)(), keys_to_remove))
         response = flask.redirect(urllib.parse.urlunsplit(split_url))
 
         self.set_username(data.get('email'))
@@ -320,8 +323,7 @@ class OAuth(Auth):
             response=response,
             name=self.TOKEN_COOKIE_NAME,
             value=oauth_token,
-            max_age=None,
-            samesite='Lax'
+            max_age=None
         )
 
         return response
