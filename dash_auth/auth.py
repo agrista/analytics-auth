@@ -37,6 +37,14 @@ class Auth(object):
         pass
 
     @abstractmethod
+    def is_service_authorized(self, services):
+        pass
+
+    @abstractmethod
+    def is_app_authorized(self, apps):
+        pass
+
+    @abstractmethod
     def auth_wrapper(self, f):
         pass
 

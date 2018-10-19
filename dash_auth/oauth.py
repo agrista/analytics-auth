@@ -108,7 +108,7 @@ class OAuth(Auth):
             urlsplit = urllib.parse.urlsplit(flask.request.url)
             params = urllib.parse.parse_qs(urlsplit.query)
 
-            if 'access_token' in params:
+            if 'access_token' in params or 'code' in params:
                 urlsplit_list = list(urlsplit)
                 urlsplit_list[3] = ''
                 urlsplit = tuple(urlsplit_list)
@@ -138,15 +138,45 @@ class OAuth(Auth):
             # and will raise `BadSignature`
             return False
 
+    def user_data_is_valid(self):
+        user = self.get_user_data()
+        return user and 'services' in user and 'apps' in user
+
     def is_authorized(self):
         if self.TOKEN_COOKIE_NAME not in flask.request.cookies:
             return False
 
+        if not self.user_data_is_valid():
+            return False
         oauth_token = flask.request.cookies[self.TOKEN_COOKIE_NAME]
         if not self.access_token_is_valid():
             return self.check_view_access(oauth_token)
 
         return True
+
+    def is_service_authorized(self, services=[]):
+        if len(services) == 0:
+            return True
+        if self.is_authorized():
+            user = self.get_user_data()
+            if user and 'services' in user:
+                for service in services:
+                    for user_service in user['services']:
+                        if service == user_service:
+                            return True
+        return False
+
+    def is_app_authorized(self, apps=[]):
+        if len(apps) == 0:
+            return True
+        if self.is_authorized():
+            user = self.get_user_data()
+            if user and 'apps' in user:
+                for app in apps:
+                    for user_app in user['apps']:
+                        if app == user_app:
+                            return True
+        return False
 
     def check_if_authorized(self):
         if self.is_authorized():
@@ -299,8 +329,35 @@ class OAuth(Auth):
         return True
 
     def login_api(self, split_url, params):
+        if 'code' in params:
+            code = params.get('code')[0]
+            auth_base_url = api_requests.config('AGRISTA_AUTH_DOMAIN', 'https://staging-id.agrista.com')
+            token_endpoint = api_requests.config('AGRISTA_TOKEN_ENDPOINT', '/oauth2/token')
+            client_id = api_requests.config('AGRISTA_AUTH_CLIENT_ID', '5f59246f-8755-4cb7-8637-147c473acf15')
+            client_secret = api_requests.config('AGRISTA_AUTH_CLIENT_SECRET', 'nYmsIJGKbU9ESUXltmOJYTkBnHU7NYBA7xcTU0oi')
+            params = {
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'code': code,
+                'grant_type': 'authorization_code',
+                'redirect_uri': flask.request.url
+            }
+
+            try:
+                res = requests.get(auth_base_url + token_endpoint + '?' + urllib.parse.urlencode(params))
+                data = res.json()
+
+                if 'access_token' in data:
+                    oauth_token = data['access_token']
+                else:
+                    raise Exception('Missing access_token')
+            except Exception as e:
+                print(e)
+                raise e
+        else:
+            oauth_token = params.get('access_token')[0]
+
         """Obtains the access_token from the URL, sets the cookie."""
-        oauth_token = params.get('access_token')[0]
         userinfo_base_url = api_requests.config('AGRISTA_USERINFO_DOMAIN', 'https://staging-enterprise.agrista.com')
         headers = {
             'authorization': 'Bearer ' + oauth_token
@@ -312,9 +369,17 @@ class OAuth(Auth):
             raise e
 
         data = res.json()
-        keys_to_remove = ('accessLevel', 'activeDirectory', 'isBudgetPublisher', 'teams', 'userRoles')
-
-        list(map(lambda x: functools.partial(data.pop, x, None)(), keys_to_remove))
+        try:
+            data['apps'] = [app['name'] for app in data['userRole']['apps']]
+            data['services'] = [app['serviceType'] for app in data['organization']['services']]
+            data['organization'].pop('services', None)
+            data.pop('accessLevel', None)
+            data.pop('activeDirectory', None)
+            data.pop('isBudgetPublisher', None)
+            data.pop('teams', None)
+            data.pop('userRole', None)
+        except Exception as e:
+            print(e)
         response = flask.redirect(urllib.parse.urlunsplit(split_url))
 
         self.set_username(data.get('email'))
@@ -358,8 +423,7 @@ class OAuth(Auth):
 
         user_data = flask.request.cookies.get(self.USERDATA_COOKIE)
         if user_data:
-            signed = self._json_signer.loads(user_data)
-            return signed
+            return self._json_signer.loads(user_data)
 
     @need_request_context
     def set_username(self, name):
