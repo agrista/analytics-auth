@@ -246,7 +246,7 @@ class OAuth(Auth):
         client_id = api_requests.config('AGRISTA_AUTH_CLIENT_ID', '5f59246f-8755-4cb7-8637-147c473acf15')
         params = {
             'client_id': client_id,
-            'response_type': 'token',
+            'response_type': 'code',
             'scope': 'profile',
             'redirect_uri': flask.request.url
         }
