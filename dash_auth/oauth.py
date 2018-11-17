@@ -246,7 +246,7 @@ class OAuth(Auth):
         client_id = api_requests.config('AGRISTA_AUTH_CLIENT_ID', '5f59246f-8755-4cb7-8637-147c473acf15')
         params = {
             'client_id': client_id,
-            'response_type': 'code',
+            'response_type': 'token',
             'scope': 'profile',
             'redirect_uri': flask.request.url
         }
@@ -372,10 +372,17 @@ class OAuth(Auth):
         try:
             data['apps'] = [app['name'] for app in data['userRole']['apps']]
             data['services'] = [app['serviceType'] for app in data['organization']['services']]
+            data['organization'].pop('createdAt', None)
+            data['organization'].pop('data', None)
+            data['organization'].pop('hostUrl', None)
             data['organization'].pop('services', None)
+            data['organization'].pop('status', None)
             data.pop('accessLevel', None)
             data.pop('activeDirectory', None)
+            data.pop('isActive', None)
             data.pop('isBudgetPublisher', None)
+            data.pop('profilePhoto', None)
+            data.pop('status', None)
             data.pop('teams', None)
             data.pop('userRole', None)
         except Exception as e:
