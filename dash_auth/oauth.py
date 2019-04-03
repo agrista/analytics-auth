@@ -108,14 +108,19 @@ class OAuth(Auth):
             urlsplit = urllib.parse.urlsplit(flask.request.url)
             params = urllib.parse.parse_qs(urlsplit.query)
 
-            if 'access_token' in params or 'code' in params:
-                urlsplit_list = list(urlsplit)
-                urlsplit_list[3] = ''
-                urlsplit = tuple(urlsplit_list)
-
-                return self.login_api(urlsplit, params)
+            if 'logout' in params:
+                return self.logout_api(self.remove_url_query(urlsplit))
+            elif 'access_token' in params or 'code' in params:
+                return self.login_api(self.remove_url_query(urlsplit), params)
 
             return None
+
+
+    def remove_url_query(self, urlsplit):
+        urlsplit_list = list(urlsplit)
+        urlsplit_list[3] = ''
+        return tuple(urlsplit_list)
+
 
     def access_token_is_valid(self):
         if self.AUTH_COOKIE_NAME not in flask.request.cookies:
@@ -397,6 +402,14 @@ class OAuth(Auth):
             value=oauth_token,
             max_age=None
         )
+
+        return response
+
+    def logout_api(self, split_url):
+        response = flask.redirect(urllib.parse.urlunsplit(split_url))
+        response.delete_cookie(self.USERNAME_COOKIE)
+        response.delete_cookie(self.USERDATA_COOKIE)
+        response.delete_cookie(self.TOKEN_COOKIE_NAME)
 
         return response
 
