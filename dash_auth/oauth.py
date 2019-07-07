@@ -376,7 +376,7 @@ class OAuth(Auth):
         data = res.json()
         try:
             data['apps'] = [app['name'] for app in data['userRole']['apps']]
-            data['services'] = [app['serviceType'] for app in data['organization']['services']]
+            data['services'] = [app['name'] for app in data['organization']['services']]
             data['organization'].pop('createdAt', None)
             data['organization'].pop('data', None)
             data['organization'].pop('hostUrl', None)
