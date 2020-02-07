@@ -246,7 +246,7 @@ class OAuth(Auth):
         return wrap
 
     def auth_redirect(self):
-        auth_base_url = api_requests.config('AGRISTA_AUTH_DOMAIN', 'https://staging-id.agrista.com')
+        auth_base_url = api_requests.config('AGRISTA_AUTH_DOMAIN', 'https://stage-id.agrista.com')
         auth_endpoint = api_requests.config('AGRISTA_AUTH_ENDPOINT', '/oauth2/authorize')
         client_id = api_requests.config('AGRISTA_AUTH_CLIENT_ID', '5f59246f-8755-4cb7-8637-147c473acf15')
         params = {
@@ -336,7 +336,7 @@ class OAuth(Auth):
     def login_api(self, split_url, params):
         if 'code' in params:
             code = params.get('code')[0]
-            auth_base_url = api_requests.config('AGRISTA_AUTH_DOMAIN', 'https://staging-id.agrista.com')
+            auth_base_url = api_requests.config('AGRISTA_AUTH_DOMAIN', 'https://stage-id.agrista.com')
             token_endpoint = api_requests.config('AGRISTA_TOKEN_ENDPOINT', '/oauth2/token')
             client_id = api_requests.config('AGRISTA_AUTH_CLIENT_ID', '5f59246f-8755-4cb7-8637-147c473acf15')
             client_secret = api_requests.config('AGRISTA_AUTH_CLIENT_SECRET', 'nYmsIJGKbU9ESUXltmOJYTkBnHU7NYBA7xcTU0oi')
@@ -363,12 +363,12 @@ class OAuth(Auth):
             oauth_token = params.get('access_token')[0]
 
         """Obtains the access_token from the URL, sets the cookie."""
-        userinfo_base_url = api_requests.config('AGRISTA_USERINFO_DOMAIN', 'https://staging-enterprise.agrista.com')
+        userinfo_base_url = api_requests.config('AGRISTA_USERINFO_DOMAIN', 'https://stage-api.agrista.com')
         headers = {
             'authorization': 'Bearer ' + oauth_token
         }
         try:
-            res = requests.get(userinfo_base_url + '/api/me', headers=headers)
+            res = requests.get(userinfo_base_url + '/me', headers=headers)
         except Exception as e:
             print(e)
             raise e
